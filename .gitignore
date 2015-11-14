@@ -6,3 +6,6 @@
 modules.order
 Module.symvers
 .tmp_versions
+
+debian/files
+debian/hp-n54l-dkms*
