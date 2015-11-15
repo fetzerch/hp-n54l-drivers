@@ -7,8 +7,8 @@ Microserver G7 N54L.
 
 ### I2C Driver for accessing voltage, temperature and fan values
 
-The project contains a patched version of the i2c_piix4 kernel module
-that allows to access the Winbond W83795ADG in order to read sensor
+The project contains a patched version of the *i2c_piix4* kernel module
+that allows one to access the Winbond W83795ADG in order to read sensor
 values with lm-sensors.
 
 After installation of the DKMS module, issue the following commands to reload
@@ -39,7 +39,7 @@ outside the kernel source tree. It rebuilds the modules automatically
 when a new kernel is installed.
 
 The content of this repository has to be copied to
-`/usr/src/hp-n54l-<VERSION>`. The following command install the DKMS
+`/usr/src/hp-n54l-<VERSION>`. The following commands install the DKMS
 module:
 
     # dkms add -m hp-n54l -v <VERSION>
@@ -61,7 +61,7 @@ Archive (PPA)](https://launchpad.net/~fetzer-ch/+archive/ubuntu/hp-n54l)
 
 ## License
 
-Packaging and patches copyright 2015 Christian Fetzer <fetzer.ch@gmail.com>.
-Kernel modules are part or Linux. Linux is copyrighted by Linus Torvalds and
-others. This project is licensed under the terms of the GNU General Public
-License (GPL-2+).
+Packaging and patches copyright 2015 Christian Fetzer. Kernel modules are part
+or Linux. Linux is copyrighted by Linus Torvalds and others.
+This project is licensed under the terms of the GNU General Public License
+(GPL-2+).
