@@ -131,6 +131,7 @@ static const struct dmi_system_id piix4_dmi_ibm[] = {
 
 /* SB800 globals */
 DEFINE_MUTEX(piix4_mutex_sb800);
+static unsigned short piix4_smb_idx_sb800;
 static const char *piix4_main_port_names_sb800[4] = {
 	"SDA0", "SDA2", "SDA3", "SDA4"
 };
@@ -244,7 +245,6 @@ static int piix4_setup_sb800(struct pci_dev *PIIX4_dev,
 			     const struct pci_device_id *id, u8 aux)
 {
 	unsigned short piix4_smba;
-	unsigned short smba_idx = 0xcd6;
 	u8 smba_en_lo, smba_en_hi, smb_en, smb_en_status;
 	u8 i2ccfg, i2ccfg_offset = 0x10;
 
@@ -266,16 +266,10 @@ static int piix4_setup_sb800(struct pci_dev *PIIX4_dev,
 	else
 		smb_en = (aux) ? 0x28 : 0x2c;
 
-	if (!request_region(smba_idx, 2, "smba_idx")) {
-		dev_err(&PIIX4_dev->dev, "SMBus base address index region "
-			"0x%x already in use!\n", smba_idx);
-		return -EBUSY;
-	}
-	outb_p(smb_en, smba_idx);
-	smba_en_lo = inb_p(smba_idx + 1);
-	outb_p(smb_en + 1, smba_idx);
-	smba_en_hi = inb_p(smba_idx + 1);
-	release_region(smba_idx, 2);
+	outb_p(smb_en, piix4_smb_idx_sb800);
+	smba_en_lo = inb_p(piix4_smb_idx_sb800 + 1);
+	outb_p(smb_en + 1, piix4_smb_idx_sb800);
+	smba_en_hi = inb_p(piix4_smb_idx_sb800 + 1);
 
 	if (!smb_en) {
 		smb_en_status = smba_en_lo & 0x10;
@@ -543,42 +537,35 @@ static s32 piix4_access(struct i2c_adapter * adap, u16 addr,
 
 /* Handles access to multiple SMBus ports on the SB800.
  * The port is selected by bits 2:1 of the smb_en register (0x2C).
- * NOTE: The selected port must be returned to the initial selection to
- * avoid problems on certain systems.
- * Return negative errno on error.
+ * Returns negative errno on error.
+ *
+ * Note: The selected port must be returned to the initial selection to avoid
+ * problems on certain systems.
  */
 static s32 piix4_access_sb800(struct i2c_adapter *adap, u16 addr,
 		 unsigned short flags, char read_write,
 		 u8 command, int size, union i2c_smbus_data *data)
 {
 	struct i2c_piix4_adapdata *adapdata = i2c_get_adapdata(adap);
-	unsigned short smba_idx = 0xcd6;
 	u8 smba_en_lo, smb_en = 0x2c;
 	u8 port;
 	int retval;
 
 	mutex_lock(&piix4_mutex_sb800);
 
-	if (!request_region(smba_idx, 2, "smba_idx")) {
-		dev_err(&adap->dev, "SMBus base address index region "
-				"0x%x already in use!\n", smba_idx);
-		retval = -EBUSY;
-		goto ERROR;
-	}
-	outb_p(smb_en, smba_idx);
-	smba_en_lo = inb_p(smba_idx + 1);
+	outb_p(smb_en, piix4_smb_idx_sb800);
+	smba_en_lo = inb_p(piix4_smb_idx_sb800 + 1);
 
 	port = adapdata->port;
 	if ((smba_en_lo & 6) != (port << 1))
-		outb_p((smba_en_lo & ~6) | (port << 1), smba_idx + 1);
+		outb_p((smba_en_lo & ~6) | (port << 1),
+		       piix4_smb_idx_sb800 + 1);
 
 	retval = piix4_access(adap, addr, flags, read_write,
 			      command, size, data);
 
-	outb_p(smba_en_lo, smba_idx + 1);
-	release_region(smba_idx, 2);
+	outb_p(smba_en_lo, piix4_smb_idx_sb800 + 1);
 
-ERROR:
 	mutex_unlock(&piix4_mutex_sb800);
 
 	return retval;
@@ -687,7 +674,7 @@ static int piix4_add_adapters_sb800(struct pci_dev *dev, unsigned short smba)
 					   piix4_main_port_names_sb800[port],
 					   &piix4_main_adapters[port]);
 		if (retval < 0)
-			goto ERROR;
+			goto error;
 
 		piix4_main_adapters[port]->algo = &piix4_smbus_algorithm_sb800;
 
@@ -697,7 +684,7 @@ static int piix4_add_adapters_sb800(struct pci_dev *dev, unsigned short smba)
 
 	return retval;
 
-ERROR:
+error:
 	dev_err(&dev->dev, "Error setting up SB800 adapters. "
 		"Unregistering all adapters!\n");
 	for (port--; port >= 0; port--) {
@@ -715,12 +702,21 @@ ERROR:
 
 static int piix4_probe(struct pci_dev *dev, const struct pci_device_id *id)
 {
+	unsigned short smba_idx = 0xcd6;
 	int retval;
 
 	if ((dev->vendor == PCI_VENDOR_ID_ATI &&
 	     dev->device == PCI_DEVICE_ID_ATI_SBX00_SMBUS &&
 	     dev->revision >= 0x40) ||
 	    dev->vendor == PCI_VENDOR_ID_AMD) {
+
+		if (!request_region(smba_idx, 2, "smba_idx")) {
+			dev_err(&dev->dev, "SMBus base address index region "
+				"0x%x already in use!\n", smba_idx);
+			return -EBUSY;
+		}
+		piix4_smb_idx_sb800 = smba_idx;
+
 		/* base address location etc changed in SB800 */
 		retval = piix4_setup_sb800(dev, id, 0);
 		if (retval < 0)
@@ -788,7 +784,7 @@ static void piix4_remove(struct pci_dev *dev)
 {
 	int port;
 
-	for (port = 0; port < PIIX4_MAX_ADAPTERS; port++) {
+	for (port = PIIX4_MAX_ADAPTERS - 1; port >= 0; port--) {
 		if (piix4_main_adapters[port]) {
 			piix4_adap_remove(piix4_main_adapters[port],
 					  port == 0);
@@ -800,6 +796,9 @@ static void piix4_remove(struct pci_dev *dev)
 		piix4_adap_remove(piix4_aux_adapter, 1);
 		piix4_aux_adapter = NULL;
 	}
+
+	if (piix4_smb_idx_sb800)
+		release_region(piix4_smb_idx_sb800, 2);
 }
 
 static struct pci_driver piix4_driver = {
