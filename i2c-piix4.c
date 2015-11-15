@@ -83,7 +83,7 @@
 #define PIIX4_MAX_ADAPTERS 4
 
 /* SB800 constants */
-#define SB800_PIIX4_SMB_IDX 0xCD6
+#define SB800_PIIX4_SMB_IDX 0xcd6
 
 /* insmod parameters */
 
@@ -133,8 +133,6 @@ static const struct dmi_system_id piix4_dmi_ibm[] = {
 };
 
 /* SB800 globals */
-DEFINE_MUTEX(piix4_mutex_sb800);
-static bool piix4_smb_idx_sb800;
 static const char *piix4_main_port_names_sb800[PIIX4_MAX_ADAPTERS] = {
 	"SDA0", "SDA2", "SDA3", "SDA4"
 };
@@ -142,7 +140,11 @@ static const char *piix4_aux_port_name_sb800 = "SDA1";
 
 struct i2c_piix4_adapdata {
 	unsigned short smba;
+
+	/* SB800 */
+	bool sb800_main;
 	unsigned short port;
+	struct mutex *mutex;
 };
 
 static int piix4_setup(struct pci_dev *PIIX4_dev,
@@ -321,8 +323,6 @@ static int piix4_setup_sb800(struct pci_dev *PIIX4_dev,
 		dev_dbg(&PIIX4_dev->dev, "Using IRQ for SMBus\n");
 	else
 		dev_dbg(&PIIX4_dev->dev, "Using SMI# for SMBus\n");
-
-	mutex_init(&piix4_mutex_sb800);
 
 	dev_info(&PIIX4_dev->dev,
 		 "SMBus Host Controller at 0x%x, revision %d\n",
@@ -555,7 +555,7 @@ static s32 piix4_access_sb800(struct i2c_adapter *adap, u16 addr,
 	u8 port;
 	int retval;
 
-	mutex_lock(&piix4_mutex_sb800);
+	mutex_lock(adapdata->mutex);
 
 	outb_p(smb_en, SB800_PIIX4_SMB_IDX);
 	smba_en_lo = inb_p(SB800_PIIX4_SMB_IDX + 1);
@@ -570,7 +570,7 @@ static s32 piix4_access_sb800(struct i2c_adapter *adap, u16 addr,
 
 	outb_p(smba_en_lo, SB800_PIIX4_SMB_IDX + 1);
 
-	mutex_unlock(&piix4_mutex_sb800);
+	mutex_unlock(adapdata->mutex);
 
 	return retval;
 }
@@ -669,9 +669,16 @@ static int piix4_add_adapter(struct pci_dev *dev, unsigned short smba,
 
 static int piix4_add_adapters_sb800(struct pci_dev *dev, unsigned short smba)
 {
-	unsigned short port;
-	int retval;
+	struct mutex *mutex;
 	struct i2c_piix4_adapdata *adapdata;
+	int port;
+	int retval;
+
+	mutex = kzalloc(sizeof(*mutex), GFP_KERNEL);
+	if (mutex == NULL)
+		return -ENOMEM;
+
+	mutex_init(mutex);
 
 	for (port = 0; port < PIIX4_MAX_ADAPTERS; port++) {
 		retval = piix4_add_adapter(dev, smba,
@@ -683,7 +690,9 @@ static int piix4_add_adapters_sb800(struct pci_dev *dev, unsigned short smba)
 		piix4_main_adapters[port]->algo = &piix4_smbus_algorithm_sb800;
 
 		adapdata = i2c_get_adapdata(piix4_main_adapters[port]);
+		adapdata->sb800_main = true;
 		adapdata->port = port;
+		adapdata->mutex = mutex;
 	}
 
 	return retval;
@@ -700,6 +709,8 @@ error:
 			piix4_main_adapters[port] = NULL;
 		}
 	}
+
+	kfree(mutex);
 
 	return retval;
 }
@@ -718,18 +729,23 @@ static int piix4_probe(struct pci_dev *dev, const struct pci_device_id *id)
 			SB800_PIIX4_SMB_IDX);
 			return -EBUSY;
 		}
-		piix4_smb_idx_sb800 = true;
 
 		/* base address location etc changed in SB800 */
 		retval = piix4_setup_sb800(dev, id, 0);
-		if (retval < 0)
+		if (retval < 0) {
+			release_region(SB800_PIIX4_SMB_IDX, 2);
 			return retval;
+		}
 
 		/*
 		 * Try to register multiplexed main SMBus adapter,
 		 * give up if we can't
 		 */
 		retval = piix4_add_adapters_sb800(dev, retval);
+		if (retval < 0) {
+			release_region(SB800_PIIX4_SMB_IDX, 2);
+			return retval;
+		}
 	} else {
 		retval = piix4_setup(dev, id);
 		if (retval < 0)
@@ -738,11 +754,9 @@ static int piix4_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		/* Try to register main SMBus adapter, give up if we can't */
 		retval = piix4_add_adapter(dev, retval, "main",
 					   &piix4_main_adapters[0]);
+		if (retval < 0)
+			return retval;
 	}
-
-	/* If no main SMBus found, give up */
-	if (retval < 0)
-		return retval;
 
 	/* Check for auxiliary SMBus on some AMD chipsets */
 	retval = -ENODEV;
@@ -772,14 +786,19 @@ static int piix4_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	return 0;
 }
 
-static void piix4_adap_remove(struct i2c_adapter *adap, bool free_smba)
+static void piix4_adap_remove(struct i2c_adapter *adap)
 {
 	struct i2c_piix4_adapdata *adapdata = i2c_get_adapdata(adap);
 
 	if (adapdata->smba) {
 		i2c_del_adapter(adap);
-		if (free_smba)
+		if (adapdata->port == 0) {
 			release_region(adapdata->smba, SMBIOSIZE);
+			if (adapdata->sb800_main) {
+				kfree(adapdata->mutex);
+				release_region(SB800_PIIX4_SMB_IDX, 2);
+			}
+		}
 		kfree(adapdata);
 		kfree(adap);
 	}
@@ -791,19 +810,15 @@ static void piix4_remove(struct pci_dev *dev)
 
 	while (--port >= 0) {
 		if (piix4_main_adapters[port]) {
-			piix4_adap_remove(piix4_main_adapters[port],
-					  port == 0);
+			piix4_adap_remove(piix4_main_adapters[port]);
 			piix4_main_adapters[port] = NULL;
 		}
 	}
 
 	if (piix4_aux_adapter) {
-		piix4_adap_remove(piix4_aux_adapter, true);
+		piix4_adap_remove(piix4_aux_adapter);
 		piix4_aux_adapter = NULL;
 	}
-
-	if (piix4_smb_idx_sb800)
-		release_region(SB800_PIIX4_SMB_IDX, 2);
 }
 
 static struct pci_driver piix4_driver = {
