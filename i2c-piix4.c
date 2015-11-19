@@ -83,7 +83,11 @@
 #define PIIX4_MAX_ADAPTERS 4
 
 /* SB800 constants */
-#define SB800_PIIX4_SMB_IDX 0xcd6
+#define SB800_PIIX4_SMB_IDX		0xcd6
+
+/* SB800 port is selected by bits 2:1 of the smb_en register (0x2c) */
+#define SB800_PIIX4_PORT_IDX		0x2c
+#define SB800_PIIX4_PORT_IDX_MASK	0x06
 
 /* insmod parameters */
 
@@ -540,7 +544,7 @@ static s32 piix4_access(struct i2c_adapter * adap, u16 addr,
 
 /*
  * Handles access to multiple SMBus ports on the SB800.
- * The port is selected by bits 2:1 of the smb_en register (0x2C).
+ * The port is selected by bits 2:1 of the smb_en register (0x2c).
  * Returns negative errno on error.
  *
  * Note: The selected port must be returned to the initial selection to avoid
@@ -551,18 +555,18 @@ static s32 piix4_access_sb800(struct i2c_adapter *adap, u16 addr,
 		 u8 command, int size, union i2c_smbus_data *data)
 {
 	struct i2c_piix4_adapdata *adapdata = i2c_get_adapdata(adap);
-	u8 smba_en_lo, smb_en = 0x2c;
+	u8 smba_en_lo;
 	u8 port;
 	int retval;
 
 	mutex_lock(adapdata->mutex);
 
-	outb_p(smb_en, SB800_PIIX4_SMB_IDX);
+	outb_p(SB800_PIIX4_PORT_IDX, SB800_PIIX4_SMB_IDX);
 	smba_en_lo = inb_p(SB800_PIIX4_SMB_IDX + 1);
 
 	port = adapdata->port;
-	if ((smba_en_lo & 6) != (port << 1))
-		outb_p((smba_en_lo & ~6) | (port << 1),
+	if ((smba_en_lo & SB800_PIIX4_PORT_IDX_MASK) != (port << 1))
+		outb_p((smba_en_lo & ~SB800_PIIX4_PORT_IDX_MASK) | (port << 1),
 		       SB800_PIIX4_SMB_IDX + 1);
 
 	retval = piix4_access(adap, addr, flags, read_write,
