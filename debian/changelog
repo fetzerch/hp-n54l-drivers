@@ -1,3 +1,10 @@
+hp-n54l-dkms (0.1.0~1) trusty; urgency=low
+
+  * i2c_piix4: Pull upstream changes.
+               Fix regression when modules where loaded in incorrect order.
+
+ -- Christian Fetzer <fetzer.ch@gmail.com>  Thu, 31 Jan 2016 14:15:00 +0100
+
 hp-n54l-dkms (0.0.3~1) trusty; urgency=low
 
   * i2c_piix4: Patchset v5 version.

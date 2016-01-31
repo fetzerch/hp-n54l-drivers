@@ -21,7 +21,7 @@ The sensors values can now be accessed using the `sensors` command.
 
 When manually installed, the file `config/modules-load.d/hp-n54l.conf` has to
 be copied to `/etc/modules-load.d/hp-n54l.conf` in order to automatically load
-the modules in the correct order after a reboot.
+the modules after reboot.
 
 The file `config/sensors.d/hp-n54l.conf` configures limits and label names for
 `sensors`. Issue `# sensors -s` to reload the file after copying it to
