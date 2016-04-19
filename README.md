@@ -7,9 +7,10 @@ Microserver G7 N54L.
 
 ### I2C Driver for accessing voltage, temperature and fan values
 
-The project contains a patched version of the *i2c_piix4* kernel module
-that allows one to access the Winbond W83795ADG in order to read sensor
-values with lm-sensors.
+The project contains a backport of the *i2c_piix4* kernel module from
+Linux 4.5 that allows one to access the Winbond W83795ADG in order to read
+sensor values with lm-sensors. The module is confirmed to work with Kernel
+3.13 onwards.
 
 After installation of the DKMS module, issue the following commands to reload
 the respective modules:
