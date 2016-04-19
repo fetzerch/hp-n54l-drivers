@@ -52,7 +52,7 @@ To remove the module:
 
 ### Installation of the Debian package
 
-On Debian based distributions `debuild -ua -uc` can be used to package
+On Debian based distributions `debuild -us -uc` can be used to package
 the drivers into a `hp-n54l-dkms\*_all.deb` file which can be installed
 using `dpkg -i`.
 
