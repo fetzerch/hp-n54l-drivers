@@ -7,7 +7,8 @@ Standards-Version: 3.9.5
 
 Package: hp-n54l-dkms
 Architecture: all
-Depends: dkms, ${misc:Depends}, linux-headers-generic
+Depends: dkms, ${misc:Depends},
+         linux-headers-generic | linux-headers-amd64 | linux-headers-686-pae
 Description: Unofficial Linux drivers for the HP ProLiant MicroServer G7 N54L.
  This package contains unofficial Linux drivers for the HP ProLiant Microserver
  G7 N54L. Currently this is a patched I2C module in order to access the
