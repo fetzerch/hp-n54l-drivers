@@ -6,7 +6,7 @@
 
 NAME=hp-n54l
 DEB_NAME=$(NAME)-dkms
-VERSION=$(shell dpkg-parsechangelog --show-field Version | sed 's/~.*$$//')
+VERSION=$(shell dpkg-parsechangelog | sed -nre 's/^Version: ([^-~]+).*$$/\1/p' )
 
 %:
 	dh $@ --with dkms
