@@ -1,3 +1,9 @@
+hp-n54l-dkms (0.1.0~3) trusty; urgency=low
+
+  * i2c_piix4: Fix package build on Debian Wheezy.
+
+ -- Christian Fetzer <fetzer.ch@gmail.com>  Sun, 01 May 2016 17:20:00 +0200
+
 hp-n54l-dkms (0.1.0~2) trusty; urgency=low
 
   * i2c_piix4: Fix package dependencies for Debian Jessie.
