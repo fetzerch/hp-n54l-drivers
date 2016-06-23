@@ -13,6 +13,7 @@ VERSION=$(shell dpkg-parsechangelog | sed -nre 's/^Version: ([^-~]+).*$$/\1/p')
 
 override_dh_install:
 	dh_install *.c Makefile usr/src/$(NAME)-$(VERSION)
+	dh_install config/modprobe.d/blacklist-n54l-watchdog.conf etc/modprobe.d
 	dh_install config/modules-load.d/hp-n54l.conf etc/modules-load.d
 	dh_install config/sensors.d/hp-n54l.conf etc/sensors.d
 	find "debian/$(DEB_NAME)/usr/src/$(NAME)-$(VERSION)" -type f -exec chmod 644 {} \;

@@ -15,6 +15,7 @@ sensor values with lm-sensors. The module is confirmed to work with Kernel
 After installation of the DKMS module, issue the following commands to reload
 the respective modules:
 
+    # rmmod sp5100_tco
     # rmmod w83795 jc42 i2c_piix4
     # modprobe -a i2c_piix4 jc42 w83795
 
@@ -27,6 +28,13 @@ the modules after reboot.
 The file `config/sensors.d/hp-n54l.conf` configures limits and label names for
 `sensors`. Issue `# sensors -s` to reload the file after copying it to
 `/etc/sensors.d/hp-n54l.conf`.
+
+The [i2c-piix4 module conflicts with the onboard watchdog](
+http://www.spinics.net/lists/linux-i2c/msg23437.html). Therefore it has to be
+ensured that `sp5100_tco` is unloaded before loading `i2c_piix4`. The module
+should be blacklisted to it from being loaded automatically. This can be
+achieved by copying the file `config/modprobe.d/blacklist-n54l-watchdog.conf`
+to `/etc/modprobe.d/blacklist-n54l-watchdog.conf`.
 
 ## Installation
 

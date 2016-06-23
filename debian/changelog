@@ -1,3 +1,9 @@
+hp-n54l-dkms (0.1.0~4) trusty; urgency=low
+
+  * project: Blacklist conflicting watchdog module sp5100_tco.
+
+ -- Christian Fetzer <fetzer.ch@gmail.com>  Thu, 23 Jun 2016 22:25:00 +0200
+
 hp-n54l-dkms (0.1.0~3) trusty; urgency=low
 
   * i2c_piix4: Fix package build on Debian Wheezy.
