@@ -1,3 +1,5 @@
+[![CircleCI Status](https://circleci.com/gh/fetzerch/hp-n54l-drivers.svg?style=shield)](https://circleci.com/gh/fetzerch/hp-n54l-drivers)
+
 # Unofficial Linux drivers for HP ProLiant MicroServer G7 N54L
 
 This repository contains unofficial Linux drivers for the HP ProLiant
