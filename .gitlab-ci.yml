@@ -1,0 +1,16 @@
+image: ubuntu:12.04
+
+build:
+  stage: build
+  script:
+    - apt-get update && apt-get install -y devscripts debhelper dkms
+    - debuild -us -uc
+    - "apt-get install -y linux-headers-$(uname -r)
+       || (echo 'Host Kernel not found, using container headers'
+           && apt-get install -y linux-headers-generic
+           && ln -s $(ls /lib/modules) /lib/modules/$(uname -r))"
+    - dpkg -i ../*.deb
+    - mv ../hp-n54l-dkms_* .
+  artifacts:
+    paths:
+      - hp-n54l-dkms_*
