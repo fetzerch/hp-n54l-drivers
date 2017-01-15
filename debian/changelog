@@ -1,3 +1,9 @@
+hp-n54l-dkms (0.1.0~5) trusty; urgency=low
+
+  * project: Allow building for all installed kernels.
+
+ -- Christian Fetzer <fetzer.ch@gmail.com>  Sun, 15 Jan 2017 15:02:00 +0100
+
 hp-n54l-dkms (0.1.0~4) trusty; urgency=low
 
   * project: Blacklist conflicting watchdog module sp5100_tco.
