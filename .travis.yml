@@ -1,0 +1,11 @@
+language: c
+addons:
+  apt:
+    packages:
+      - devscripts
+      - equivs
+install:
+  - sudo mk-build-deps -ir
+script:
+  - debuild -us -uc
+  - sudo dpkg -i ../hp-n54l-dkms_*.deb || sudo apt-get -f install
